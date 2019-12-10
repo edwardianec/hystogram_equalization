@@ -9,6 +9,7 @@ img2 = cv2.imread('images/src/2.tif',0)
 img3 = cv2.imread('images/src/3.tif',0)
 img4 = cv2.imread('images/src/4.tif',0)
 
+
 def filters(img):
 
 	#kernel 		= np.ones((5,5),np.float32)/25
@@ -44,7 +45,6 @@ def filters(img):
 	clarity_image 		= cv2.filter2D(img,-1,kernel_clarity_mat)
 	clarity_0_image 	= cv2.filter2D(img,-1,kernel_clarity_0_mat)
 	gausian_image 		= cv2.filter2D(img,-1,kernel_gausian_mat)
-	equalization_image	= cv2.equalizeHist(img)
 
 
 	bilateral_image		= cv2.bilateralFilter(img,9,5,5)
@@ -81,14 +81,7 @@ def modify_image_core(val):
 	new_val = 255 if new_val>255 else new_val
 	return new_val
 
-def get_hist(img):
-	height, width = img.shape
-	hist = dict(enumerate([0]*256))
-	for j in range(0,height):
-		for i in range(0, width):			
-			pixel_val = img[j,i]
-			hist[pixel_val]	= hist[pixel_val]+1
-	return hist	
+
 
 def cumm_sum():
 	pass
@@ -97,7 +90,7 @@ def cumm_sum():
 def modify_image(img):
 	height, width = img.shape
 	resolution = height*width
-	histogram = get_hist(img)
+	histogram = build_hyst(img)
 	mult = 255/resolution
 	new_greys = {}
 	for i in range(0,256):
@@ -128,7 +121,7 @@ def my_resize(img, percent):
 def my_subplots(img1, img2):
 	hist, edges = np.histogram(img1,bins=range(255))
 	hist2, edges2 = np.histogram(img2,bins=range(255))
-	hystogram = get_hist(img3)
+	hystogram = build_hist(img3)
 	lag = 0.1
 	x = list(range(1,256))
 	y = [(hystogram[out]+hystogram[out-1]) for out in x if out>0 ]
@@ -158,10 +151,125 @@ def my_subplots(img1, img2):
 
 
 #modified_image = modify_image(img4)
+#---------------------------------------------------------
 
-concat_images = np.concatenate( (my_resize(img4,50), my_resize(img4, 50)), axis=1)
-cv2.imshow('modified_image',concat_images )
-my_subplots(img4, img4)
+
+def build_hist(img, whdth, height):
+	hist = dict(enumerate([0]*256))
+	for j in range(0,height):
+		for i in range(0, width):			
+			pixel_val = int(img[j,i])
+			#print("pix_val:",pixel_val)
+			hist[pixel_val]	= hist[pixel_val]+1
+
+	return hist	
+
+def normilize_image(img, histogram, width, height):
+	#print(histogram)
+	hist_minimum = 0
+	hist_maximum = 0
+	for grey in sorted(histogram.keys()):		
+		if histogram[grey]:
+			if (hist_minimum == 0):	hist_minimum = grey
+			hist_maximum = grey
+
+	stretch_coefficient = 255/(hist_maximum-100)
+
+	normilized_image = np.zeros(shape=[height, width], dtype=np.uint8)
+	
+	for i in range(0,width):
+		for j in range(0, height):
+			pixel_val = img[j,i]			
+			new_val = int((pixel_val-hist_minimum)*stretch_coefficient)			
+			normilized_image[j,i] = new_val if new_val <=255 else 255
+			
+	min_percent = (hist_minimum / (width*height))*100
+	max_percent = (hist_maximum / (width*height))*100
+	print("HIST_MINIMUM:{0}, HIST_MAXIMUM:{1} ;".format(hist_minimum, hist_maximum))
+	print("HIST_MINIMUM %:{0}, HIST_MAXIMUM %:{1} ;".format(min_percent, max_percent))
+	return normilized_image
+
+def cumul_hist_val(histogram, grey):
+	cum = 0
+	for i in range(0, grey):
+		cum = cum + histogram[i]
+	return cum
+
+def cumulative_function(histogram):
+	cum_dict = {}
+	for i in range(0,256):
+		cum_dict[i] =  cumul_hist_val(histogram,i)
+	
+	return (cum_dict.keys(), cum_dict.values())
+
+
+
+
+def equalization_image(img, histogram, width, height):
+	eq_image = np.zeros(shape=[height, width], dtype=np.uint8)
+	eq_image.fill(0)
+
+	for i in range(0,width):
+		for j in range(0, height):
+			pixel_val = img[j,i]			
+			new_val = 	(255/(width*height))*cumul_hist_val(histogram, pixel_val)	
+			eq_image[j,i] = int(new_val)
+
+	return eq_image
+
+
+def show_graphs(graphs, width, height):
+	figure, axs = plt.subplots(height, width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5})
+
+	i,j = 0,0
+	for graph in graphs:		
+		print(i,j)
+		axs[j,i].bar(graph[0], graph[1])
+		axs[j,i].set_title("graph {0}, {1}".format(j,i))
+		i = i+1
+		if (i>width-1):
+			i = 0
+			j = j+1
+
+	plt.show()	
+
+def show_graphs_simple(graph1, graph2, width):
+	figure, (axs1, axs2 ) = plt.subplots( width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5})
+
+	axs1.bar(graph1[0], graph1[1])
+	axs1.set_title("hist 0")
+
+	axs2.bar(graph2[0], graph2[1])
+	axs2.set_title("hist 1")
+	plt.show()	
+
+img5 				= cv2.imread('src/5.tif', 0)
+height, width 		= img5.shape
+src_hyst 			= build_hist(img5, width, height)
+
+#normilized_image 	= normilize_image(img5, src_hyst, width, height)
+#norm_hyst			= build_hist(normilized_image, width, height)
+
+eq_image 			= equalization_image(img5, src_hyst, width, height)
+print(eq_image)
+eq_hyst				= build_hist(eq_image, width, height)
+
+graph_src_hyst		= [src_hyst.keys(), src_hyst.values()]
+graph_norm_hyst		= [eq_hyst.keys(), eq_hyst.values()]
+
+
+
+show_graphs( [graph_src_hyst, graph_norm_hyst , cumulative_function(src_hyst), cumulative_function(eq_hyst)], 2,2)
+
+cv2.imshow('modified_image', np.concatenate( (my_resize(img5,100), my_resize(eq_image, 100)), axis=1))
+#cv2.imshow('modified_image',eq_image)
+
+
+
+
+#concat_images = np.concatenate( (my_resize(img4,50), my_resize(img4, 50)), axis=1)
+#cv2.imshow('modified_image',concat_images )
+#my_subplots(img4, img4)
 
 
 cv2.waitKey(0)
