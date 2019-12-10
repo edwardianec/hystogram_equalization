@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 
+import glob
+
 img0 = cv2.imread('images/src/0.tif',0)
 img1 = cv2.imread('images/src/1.tif',0)
 img2 = cv2.imread('images/src/2.tif',0)
@@ -186,8 +188,8 @@ def normilize_image(img, histogram):
 			
 	min_percent = (hist_minimum / (width*height))*100
 	max_percent = (hist_maximum / (width*height))*100
-	print("HIST_MINIMUM:{0}, HIST_MAXIMUM:{1} ;".format(hist_minimum, hist_maximum))
-	print("HIST_MINIMUM %:{0}, HIST_MAXIMUM %:{1} ;".format(min_percent, max_percent))
+	#print("HIST_MINIMUM:{0}, HIST_MAXIMUM:{1} ;".format(hist_minimum, hist_maximum))
+	#print("HIST_MINIMUM %:{0}, HIST_MAXIMUM %:{1} ;".format(min_percent, max_percent))
 	return normilized_image
 
 def cumul_hist_val(histogram, grey):
@@ -207,7 +209,6 @@ def cdf_trashold(histogram, grey, trashold):
 
 
 def cumulative_function(histogram):
-	print(histogram)
 	cum_dict = {}
 	for i in range(0,256):
 		cum_dict[i] =  cumul_hist_val(histogram,i)
@@ -252,7 +253,6 @@ def show_graphs(graphs, width, height):
 
 	i,j = 0,0
 	for graph in graphs:		
-		print(i,j)
 		axs[j,i].bar(graph[0], graph[1])
 		axs[j,i].set_title("graph {0}, {1}".format(j,i))
 		i = i+1
@@ -285,56 +285,87 @@ def hist_peaks(h):
 		else: peaks[i] = 0
 	return peaks
 			
+def find_peaks_avarage(h):
+	counter = 0
+	sum 	= 0
+	for i in range(1, MAX_GREY_LEVEL):
+		if (h[i]):
+			counter = counter + 1
+			sum = sum + h[i]
+	avarage = int(sum/counter)
+	return avarage
+
+
+
 
 #------------------------------MAIN-----------------------------------------
 
+images 		= glob.glob("src\\vid\\*.tif")
+img_amount 	= len(images)
+img_counter = 0
+for image in images:
+	img_counter = img_counter + 1
+	print("{0} of {1}".format(img_counter, img_amount))
+	#print("image_filename_path:", image)
+	image_writepath		= "src\\vid\\created"
+	image_filename_path	= image
+	image_filename 		=  image_filename_path.split("\\")[-1]
 
-img5 				= cv2.imread('src/7.bmp', 0)
-height, width 		= img5.shape
-src_hyst 			= build_hist(img5)
+	img5 				= cv2.imread(image_filename_path, 0)
+	height, width 		= img5.shape
+	src_hyst 			= build_hist(img5)
 
-normilized_image 	= normilize_image(img5, src_hyst)
-norm_hyst			= build_hist(normilized_image)
+	normilized_image 	= normilize_image(img5, src_hyst)
+	norm_hyst			= build_hist(normilized_image)
 
-#simple equalization
-eq_image 			= equalization_image(img5, src_hyst)
-eq_hyst				= build_hist(eq_image)
+	#simple equalization
+	eq_image 			= equalization_image(img5, src_hyst)
+	eq_hyst				= build_hist(eq_image)
 
-#equalization with trashold
-eq_trashold_img		= equalization_image_2(img5, src_hyst, 200)
-eq_trashold_hyst	= build_hist(eq_trashold_img)
+	#peaks of image
+	peaks_src_hist		= hist_peaks(src_hyst)
+	peak_trashold		= find_peaks_avarage(src_hyst)
+	#print("trashold:",peak_trashold)
 
-#peaks of image
-peaks_src_hist		= hist_peaks(src_hyst)
-
-graph_src_hyst				= [src_hyst.keys(), src_hyst.values()]
-graph_eq_hyst				= [eq_hyst.keys(), eq_hyst.values()]
-graph_norm_hyst				= [norm_hyst.keys(), norm_hyst.values()]
-graph_eq_trashold_hyst		= [eq_trashold_hyst.keys(), eq_trashold_hyst.values()]
-graph_peaks_hyst			= [peaks_src_hist.keys(), peaks_src_hist.values()]
+	#equalization with trashold
+	eq_trashold_img		= equalization_image_2(img5, src_hyst, peak_trashold/4)
+	eq_trashold_hyst	= build_hist(eq_trashold_img)
 
 
 
+	graph_src_hyst				= [src_hyst.keys(), src_hyst.values()]
+	graph_eq_hyst				= [eq_hyst.keys(), eq_hyst.values()]
+	graph_norm_hyst				= [norm_hyst.keys(), norm_hyst.values()]
+	graph_eq_trashold_hyst		= [eq_trashold_hyst.keys(), eq_trashold_hyst.values()]
+	graph_peaks_hyst			= [peaks_src_hist.keys(), peaks_src_hist.values()]
 
-show_graphs( [
-	graph_src_hyst, 
-	graph_norm_hyst ,
-	graph_eq_hyst,
-	graph_eq_trashold_hyst,
-	graph_peaks_hyst,
-	
 
-	cumulative_function(src_hyst),
-	cumulative_function(norm_hyst),
-	cumulative_function(eq_hyst),
-	cumulative_function(eq_trashold_hyst),
-	cumulative_function(peaks_src_hist)
 
-	 
-], width=5, height=2)
 
-cv2.imshow('modified_image', np.concatenate( (my_resize(img5,100), my_resize(eq_image, 100), my_resize(normilized_image, 100), my_resize(eq_trashold_img, 100)), axis=1))
-#cv2.imshow('modified_image',eq_image)
+	""" show_graphs( [
+		graph_src_hyst, 
+		graph_norm_hyst ,
+		graph_eq_hyst,
+		graph_eq_trashold_hyst,
+		graph_peaks_hyst,
+		
+
+		cumulative_function(src_hyst),
+		cumulative_function(norm_hyst),
+		cumulative_function(eq_hyst),
+		cumulative_function(eq_trashold_hyst),
+		cumulative_function(peaks_src_hist)
+
+		
+	], width=5, height=2) """
+
+	row0 = np.concatenate( (my_resize(img5,80), my_resize(eq_image, 80)), axis=0)
+	row1 = np.concatenate( (my_resize(normilized_image,80), my_resize(eq_trashold_img, 80)), axis=0)
+	full_image = np.concatenate( (row0, row1), axis=1)
+	#cv2.imshow('modified_image', full_image)
+	#print("write_path:", image_writepath+"\\"+image_filename)
+	cv2.imwrite(image_writepath+"\\"+image_filename, full_image)
+	#cv2.imshow('modified_image',eq_image)
 
 
 
