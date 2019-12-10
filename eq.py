@@ -153,6 +153,7 @@ def my_subplots(img1, img2):
 #modified_image = modify_image(img4)
 #---------------------------------------------------------
 
+MAX_GREY_LEVEL = 256
 
 def build_hist(img):
 	height, width = img.shape
@@ -190,17 +191,29 @@ def normilize_image(img, histogram):
 	return normilized_image
 
 def cumul_hist_val(histogram, grey):
+	#print(histogram)
 	cum = 0
 	for i in range(0, grey):
+		
 		cum = cum + histogram[i]
 	return cum
 
+def cdf_trashold(histogram, grey, trashold):
+	cum = 0
+	for i in range(0, grey):
+		hist_val = histogram[i] if histogram[i] < trashold else trashold
+		cum = cum + hist_val
+	return cum
+
+
 def cumulative_function(histogram):
+	print(histogram)
 	cum_dict = {}
 	for i in range(0,256):
 		cum_dict[i] =  cumul_hist_val(histogram,i)
 	
 	return (cum_dict.keys(), cum_dict.values())
+
 
 
 
@@ -214,6 +227,20 @@ def equalization_image(img, histogram):
 		for j in range(0, height):
 			pixel_val = img[j,i]			
 			new_val = 	(255/(width*height))*cumul_hist_val(histogram, pixel_val)	
+			eq_image[j,i] = int(new_val)
+
+	return eq_image
+
+def equalization_image_2(img, histogram, trashold):
+	height, width = img.shape	
+	eq_image = np.zeros(shape=[height, width], dtype=np.uint8)
+
+	multiplyer = (MAX_GREY_LEVEL-1)/cdf_trashold(histogram, MAX_GREY_LEVEL-1, trashold)
+
+	for i in range(0,width):
+		for j in range(0, height):
+			pixel_val = img[j,i]			
+			new_val = 	multiplyer*cdf_trashold(histogram, pixel_val, trashold)	
 			eq_image[j,i] = int(new_val)
 
 	return eq_image
@@ -245,24 +272,47 @@ def show_graphs_simple(graph1, graph2, width):
 	axs2.set_title("hist 1")
 	plt.show()	
 
+def hist_peaks(h):
+	last_val_item = 0
+	peaks = {}
+	peaks[0] = 0
+	for i in range(1, MAX_GREY_LEVEL):
+		if (h[i]):
+			last_val_item = i
+			if ((h[i] > h[i-1]) and (h[i] > h[i+1])):
+				peaks[i] = h[i]
+			else: peaks[i] = 0
+		else: peaks[i] = 0
+	return peaks
+			
 
 #------------------------------MAIN-----------------------------------------
 
 
-img5 				= cv2.imread('src/5.tif', 0)
+img5 				= cv2.imread('src/7.bmp', 0)
 height, width 		= img5.shape
 src_hyst 			= build_hist(img5)
 
 normilized_image 	= normilize_image(img5, src_hyst)
 norm_hyst			= build_hist(normilized_image)
 
+#simple equalization
 eq_image 			= equalization_image(img5, src_hyst)
-print(eq_image)
 eq_hyst				= build_hist(eq_image)
 
-graph_src_hyst		= [src_hyst.keys(), src_hyst.values()]
-graph_eq_hyst		= [eq_hyst.keys(), eq_hyst.values()]
-graph_norm_hyst		= [norm_hyst.keys(), norm_hyst.values()]
+#equalization with trashold
+eq_trashold_img		= equalization_image_2(img5, src_hyst, 200)
+eq_trashold_hyst	= build_hist(eq_trashold_img)
+
+#peaks of image
+peaks_src_hist		= hist_peaks(src_hyst)
+
+graph_src_hyst				= [src_hyst.keys(), src_hyst.values()]
+graph_eq_hyst				= [eq_hyst.keys(), eq_hyst.values()]
+graph_norm_hyst				= [norm_hyst.keys(), norm_hyst.values()]
+graph_eq_trashold_hyst		= [eq_trashold_hyst.keys(), eq_trashold_hyst.values()]
+graph_peaks_hyst			= [peaks_src_hist.keys(), peaks_src_hist.values()]
+
 
 
 
@@ -270,12 +320,20 @@ show_graphs( [
 	graph_src_hyst, 
 	graph_norm_hyst ,
 	graph_eq_hyst,
+	graph_eq_trashold_hyst,
+	graph_peaks_hyst,
+	
+
 	cumulative_function(src_hyst),
 	cumulative_function(norm_hyst),
-	cumulative_function(eq_hyst) 
-], width=3, height=2)
+	cumulative_function(eq_hyst),
+	cumulative_function(eq_trashold_hyst),
+	cumulative_function(peaks_src_hist)
 
-cv2.imshow('modified_image', np.concatenate( (my_resize(img5,100), my_resize(eq_image, 100), my_resize(normilized_image, 100)), axis=1))
+	 
+], width=5, height=2)
+
+cv2.imshow('modified_image', np.concatenate( (my_resize(img5,100), my_resize(eq_image, 100), my_resize(normilized_image, 100), my_resize(eq_trashold_img, 100)), axis=1))
 #cv2.imshow('modified_image',eq_image)
 
 
