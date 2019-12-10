@@ -154,7 +154,8 @@ def my_subplots(img1, img2):
 #---------------------------------------------------------
 
 
-def build_hist(img, whdth, height):
+def build_hist(img):
+	height, width = img.shape
 	hist = dict(enumerate([0]*256))
 	for j in range(0,height):
 		for i in range(0, width):			
@@ -164,24 +165,23 @@ def build_hist(img, whdth, height):
 
 	return hist	
 
-def normilize_image(img, histogram, width, height):
-	#print(histogram)
+def normilize_image(img, histogram):
+	height, width = img.shape
 	hist_minimum = 0
 	hist_maximum = 0
-	for grey in sorted(histogram.keys()):		
+	for grey in range(0,256):		
 		if histogram[grey]:
 			if (hist_minimum == 0):	hist_minimum = grey
 			hist_maximum = grey
 
-	stretch_coefficient = 255/(hist_maximum-100)
-
+	stretch_coefficient = 255/(hist_maximum)
 	normilized_image = np.zeros(shape=[height, width], dtype=np.uint8)
 	
 	for i in range(0,width):
 		for j in range(0, height):
 			pixel_val = img[j,i]			
 			new_val = int((pixel_val-hist_minimum)*stretch_coefficient)			
-			normilized_image[j,i] = new_val if new_val <=255 else 255
+			normilized_image[j,i] = new_val #if new_val <=255 else 255
 			
 	min_percent = (hist_minimum / (width*height))*100
 	max_percent = (hist_maximum / (width*height))*100
@@ -205,7 +205,8 @@ def cumulative_function(histogram):
 
 
 
-def equalization_image(img, histogram, width, height):
+def equalization_image(img, histogram):
+	height, width = img.shape	
 	eq_image = np.zeros(shape=[height, width], dtype=np.uint8)
 	eq_image.fill(0)
 
@@ -216,6 +217,7 @@ def equalization_image(img, histogram, width, height):
 			eq_image[j,i] = int(new_val)
 
 	return eq_image
+
 
 
 def show_graphs(graphs, width, height):
@@ -243,25 +245,37 @@ def show_graphs_simple(graph1, graph2, width):
 	axs2.set_title("hist 1")
 	plt.show()	
 
+
+#------------------------------MAIN-----------------------------------------
+
+
 img5 				= cv2.imread('src/5.tif', 0)
 height, width 		= img5.shape
-src_hyst 			= build_hist(img5, width, height)
+src_hyst 			= build_hist(img5)
 
-#normilized_image 	= normilize_image(img5, src_hyst, width, height)
-#norm_hyst			= build_hist(normilized_image, width, height)
+normilized_image 	= normilize_image(img5, src_hyst)
+norm_hyst			= build_hist(normilized_image)
 
-eq_image 			= equalization_image(img5, src_hyst, width, height)
+eq_image 			= equalization_image(img5, src_hyst)
 print(eq_image)
-eq_hyst				= build_hist(eq_image, width, height)
+eq_hyst				= build_hist(eq_image)
 
 graph_src_hyst		= [src_hyst.keys(), src_hyst.values()]
-graph_norm_hyst		= [eq_hyst.keys(), eq_hyst.values()]
+graph_eq_hyst		= [eq_hyst.keys(), eq_hyst.values()]
+graph_norm_hyst		= [norm_hyst.keys(), norm_hyst.values()]
 
 
 
-show_graphs( [graph_src_hyst, graph_norm_hyst , cumulative_function(src_hyst), cumulative_function(eq_hyst)], 2,2)
+show_graphs( [
+	graph_src_hyst, 
+	graph_norm_hyst ,
+	graph_eq_hyst,
+	cumulative_function(src_hyst),
+	cumulative_function(norm_hyst),
+	cumulative_function(eq_hyst) 
+], width=3, height=2)
 
-cv2.imshow('modified_image', np.concatenate( (my_resize(img5,100), my_resize(eq_image, 100)), axis=1))
+cv2.imshow('modified_image', np.concatenate( (my_resize(img5,100), my_resize(eq_image, 100), my_resize(normilized_image, 100)), axis=1))
 #cv2.imshow('modified_image',eq_image)
 
 
