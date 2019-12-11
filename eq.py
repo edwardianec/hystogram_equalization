@@ -2,6 +2,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+import gc
 
 import glob
 
@@ -248,7 +249,7 @@ def equalization_image_2(img, histogram, trashold):
 
 
 
-def show_graphs(graphs, width, height):
+def show_graphs(graphs, width, height, name):
 	figure, axs = plt.subplots(height, width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5})
 
 	i,j = 0,0
@@ -260,7 +261,10 @@ def show_graphs(graphs, width, height):
 			i = 0
 			j = j+1
 
-	plt.show()	
+	plt.savefig("src\\vid\\created\\figures\\"+name+"_figure.png")
+	figure.clf()
+	plt.close()
+
 
 def show_graphs_simple(graph1, graph2, width):
 	figure, (axs1, axs2 ) = plt.subplots( width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5})
@@ -296,30 +300,20 @@ def find_peaks_avarage(h):
 	return avarage
 
 
-
-
-#------------------------------MAIN-----------------------------------------
-
-images 		= glob.glob("src\\vid\\*.tif")
-img_amount 	= len(images)
-img_counter = 0
-for image in images:
-	img_counter = img_counter + 1
-	print("{0} of {1}".format(img_counter, img_amount))
-	#print("image_filename_path:", image)
+def process_image(image_filename_path):
+	print("image_filename_path:", image_filename_path)
 	image_writepath		= "src\\vid\\created"
-	image_filename_path	= image
-	image_filename 		=  image_filename_path.split("\\")[-1]
+	image_filename 		= image_filename_path.split("\\")[-1]
 
-	img5 				= cv2.imread(image_filename_path, 0)
-	height, width 		= img5.shape
-	src_hyst 			= build_hist(img5)
+	img 				= cv2.imread(image_filename_path, 0)
+	height, width 		= img.shape
+	src_hyst 			= build_hist(img)
 
-	normilized_image 	= normilize_image(img5, src_hyst)
+	normilized_image 	= normilize_image(img, src_hyst)
 	norm_hyst			= build_hist(normilized_image)
 
 	#simple equalization
-	eq_image 			= equalization_image(img5, src_hyst)
+	eq_image 			= equalization_image(img, src_hyst)
 	eq_hyst				= build_hist(eq_image)
 
 	#peaks of image
@@ -328,7 +322,7 @@ for image in images:
 	#print("trashold:",peak_trashold)
 
 	#equalization with trashold
-	eq_trashold_img		= equalization_image_2(img5, src_hyst, peak_trashold/4)
+	eq_trashold_img		= equalization_image_2(img, src_hyst, peak_trashold/5)
 	eq_trashold_hyst	= build_hist(eq_trashold_img)
 
 
@@ -342,39 +336,52 @@ for image in images:
 
 
 
-	""" show_graphs( [
+	show_graphs( [
 		graph_src_hyst, 
 		graph_norm_hyst ,
 		graph_eq_hyst,
-		graph_eq_trashold_hyst,
-		graph_peaks_hyst,
+		graph_eq_trashold_hyst
+		#graph_peaks_hyst,
 		
 
-		cumulative_function(src_hyst),
-		cumulative_function(norm_hyst),
-		cumulative_function(eq_hyst),
-		cumulative_function(eq_trashold_hyst),
-		cumulative_function(peaks_src_hist)
+		#cumulative_function(src_hyst),
+		#cumulative_function(norm_hyst),
+		#cumulative_function(eq_hyst),
+		#cumulative_function(eq_trashold_hyst),
+		#cumulative_function(peaks_src_hist)
 
 		
-	], width=5, height=2) """
+	], width=2, height=2, name=image_filename)
 
-	row0 = np.concatenate( (my_resize(img5,80), my_resize(eq_image, 80)), axis=0)
+	row0 = np.concatenate( (my_resize(img,80), my_resize(eq_image, 80)), axis=0)
 	row1 = np.concatenate( (my_resize(normilized_image,80), my_resize(eq_trashold_img, 80)), axis=0)
 	full_image = np.concatenate( (row0, row1), axis=1)
 	#cv2.imshow('modified_image', full_image)
 	#print("write_path:", image_writepath+"\\"+image_filename)
 	cv2.imwrite(image_writepath+"\\"+image_filename, full_image)
+
+	#del a, b
+	#gc.collect()
 	#cv2.imshow('modified_image',eq_image)
 
 
 
 
+#------------------------------MAIN-----------------------------------------
+
+images 		= glob.glob("src\\vid\\*.tif")
+img_amount 	= len(images)
+img_counter = 0
+for image in images:
+	img_counter = img_counter + 1
+	print("{0} of {1}".format(img_counter, img_amount))
+	process_image(image)
+
 #concat_images = np.concatenate( (my_resize(img4,50), my_resize(img4, 50)), axis=1)
 #cv2.imshow('modified_image',concat_images )
 #my_subplots(img4, img4)
 
-
+gc.collect()
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 
