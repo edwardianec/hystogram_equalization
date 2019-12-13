@@ -249,10 +249,8 @@ def equalization_image_2(img, histogram, trashold):
 
 
 
-def show_graphs(graphs, width, height, image_filename_path=""):
-	figure, axs 		= plt.subplots(height, width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5})
-	image_filename 		= image_filename_path.split("\\")[-1]
-	image_path			=  "\\".join(image_filename_path.split("\\")[:-1])
+def show_graphs(graphs, width, height, name, save_path=""):
+	figure, axs = plt.subplots(height, width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5})
 
 	i,j = 0,0
 	for graph in graphs:		
@@ -262,12 +260,11 @@ def show_graphs(graphs, width, height, image_filename_path=""):
 		if (i>width-1):
 			i = 0
 			j = j+1
-	if (image_filename_path):
-		plt.savefig(image_path+"\\processed\\figures\\"+image_filename+"_figure.png")
+	if (save_path  ):
+		plt.savefig(save_path+name+"_figure.png")
 	else:
 		plt.show()
-	figure.clf()
-	plt.close()
+
 
 
 def show_graphs_simple(graph1, graph2, width):
@@ -284,7 +281,7 @@ def hist_peaks(h):
 	last_val_item = 0
 	peaks = {}
 	peaks[0] = 0
-	for i in range(1, MAX_GREY_LEVEL-1):
+	for i in range(1, MAX_GREY_LEVEL):
 		if (h[i]):
 			last_val_item = i
 			if ((h[i] > h[i-1]) and (h[i] > h[i+1])):
@@ -305,11 +302,11 @@ def find_peaks_avarage(h):
 
 
 def process_image(image_filename_path):
-	#print("image_filename_path:", image_filename_path)
+	print("image_filename_path:", image_filename_path)
+	image_writepath		= "src\\vid\\created"
 	image_filename 		= image_filename_path.split("\\")[-1]
-	image_path			=  "\\".join(image_filename_path.split("\\")[:-1])
 
-	img 				= cv2.imread(image_filename_path, cv2.IMREAD_GRAYSCALE)
+	img 				= cv2.imread(image_filename_path, 0)
 	height, width 		= img.shape
 	src_hyst 			= build_hist(img)
 
@@ -355,14 +352,14 @@ def process_image(image_filename_path):
 		#cumulative_function(peaks_src_hist)
 
 		
-	], width=2, height=2, image_filename_path=image_filename_path)
+	], width=2, height=2, name=image_filename)
 
 	row0 = np.concatenate( (my_resize(img,80), my_resize(eq_image, 80)), axis=0)
 	row1 = np.concatenate( (my_resize(normilized_image,80), my_resize(eq_trashold_img, 80)), axis=0)
 	full_image = np.concatenate( (row0, row1), axis=1)
 	#cv2.imshow('modified_image', full_image)
 	#print("write_path:", image_writepath+"\\"+image_filename)
-	cv2.imwrite(image_path+"\\processed\\images\\"+image_filename, full_image)
+	cv2.imwrite(image_writepath+"\\"+image_filename, full_image)
 
 	#del a, b
 	#gc.collect()
@@ -372,9 +369,8 @@ def process_image(image_filename_path):
 
 
 #------------------------------MAIN-----------------------------------------
-src_path = "D:\\resilio\\ip_lib_ed\\src_images\\dslr\\video\M11-2231\\tiff\\*.tif"
 
-images 		= glob.glob(src_path)
+images 		= glob.glob("src\\vid\\*.tif")
 img_amount 	= len(images)
 img_counter = 0
 for image in images:
@@ -386,7 +382,9 @@ for image in images:
 #cv2.imshow('modified_image',concat_images )
 #my_subplots(img4, img4)
 
-gc.collect()
+
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+gc.collect()
+plt.close()
 
