@@ -233,6 +233,7 @@ def equalization_image(img, histogram):
 
 	return eq_image
 
+# adaptive trashold
 def equalization_image_2(img, histogram, trashold):
 	height, width = img.shape	
 	eq_image = np.zeros(shape=[height, width], dtype=np.uint8)
