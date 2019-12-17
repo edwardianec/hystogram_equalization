@@ -373,6 +373,7 @@ def process_image(image_filename_path):
 
 
 #------------------------------MAIN-----------------------------------------
+
 src_path = "D:\\resilio\\ip_lib_ed\\src_images\\dslr\\video\M11-2231\\tiff\\*.tif"
 
 images 		= glob.glob(src_path)
