@@ -155,6 +155,7 @@ def plt_member_functions(params, member_vds, max_top=1):
 	
 	return plt.plot(x, y_0, x, y_1, x, y_2, x, y_3, x, y_4, x_5, y_5,  x_6, y_6,  x_7, y_7,  x_8, y_8,  x_9, y_9)
 
+
 #-------------------------------------------------------------------------------------------------------------
 
 # 	описание формулы на странице 233, Мир цифровой обработки 
@@ -182,6 +183,9 @@ def get_defuzzification_list(params, vds):
 		defuzz_list.append(defuzification(ums,vds))
 	return  defuzz_list
 
+def show_transformation_func(member_params, member_vds ):
+	plt.plot(list(range(0,256)), get_defuzzification_list(member_params, member_vds), list(range(0,256)), list(range(0,256)))
+	plt.show()
 
 def show_graphs(graphs, width, height, image_filename_path=""):
 	figure, axs 		= plt.subplots(height, width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5}, figsize=(30,20))
@@ -228,6 +232,7 @@ def show_graph(graph, member_params, member_vds, image_filename_path=""):
 
 	plt_member_functions(member_params, member_vds, max_top=4000)
 	
+	
 	image_filename 		= image_filename_path.split("\\")[-1]
 	image_path			=  "\\".join(image_filename_path.split("\\")[:-1])
 	#plt.xticks(range(0, 256), range(0,256), rotation=90)
@@ -264,7 +269,7 @@ def fuzzy_process(path):
 	img 				= cv2.imread(path, cv2.IMREAD_GRAYSCALE)
 	height, width 		= img.shape
 
-	member_params		= (14,24,91,203,251)
+	member_params		= (14,63,69,170,251)
 	member_vds			= [0,63,126, 188, 255]
 
 	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
@@ -308,6 +313,8 @@ def fuzzy_process(path):
 
 	cv2.imwrite(image_path+"\\processed\\"+image_filename, fuzzy_image)
 	show_graph(graph_src_maxs, member_params, member_vds)
+	show_transformation_func(member_params, member_vds)
+	
 	#show_graph(graph_fuzz_filtered_hyst, member_params)
 
 
