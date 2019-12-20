@@ -4,8 +4,10 @@ import numpy as np
 import cv2
 import gc
 import glob
+import statistics
 
-
+#-------------------------------------------------------------------------------------------------------------
+#	Операции с гистограммой
 
 def build_hist(img):
 	height, width = img.shape
@@ -18,90 +20,166 @@ def build_hist(img):
 
 	return hist	
 
-def build_derivative(hist):
-	derivative = dict(enumerate([0]*256))
+def build_first_derivative(hist):
+	max = 255
+	derivative = dict(enumerate([0]*(max+1)))
 	j = 0
-	for i in range(0, 256):
+	for i in range(0, max+1):
 		hist_val = hist[i]
-		if (hist_val > 0):
-			if (i > 0): derivative[j] = hist[i] - hist[i-1]
-			else: derivative[j] = 0
-			j = j +1
+		if (i > 0 and i <max):
+			derivative[j] = (hist[i+1] - hist[i-1])/2		
+		j = j +1
 
 	return derivative
 
+def build_second_derivative(hist):
+	max = 255
+	derivative = dict(enumerate([0]*(max+1)))
+	j = 0
+	for i in range(0, max+1):
+		hist_val = hist[i]
+		if (i > 0 and i <max):
+			derivative[j] = hist[i+1] - 2*hist[i] + hist[i-1]		
+		j = j +1
+
+	return derivative
+
+def filtered_hist(h):
+	max = 255
+	filtered = dict(enumerate([0]*(max+1)))
+	for i in range(0, max+1):		
+		if (i==0 or i==max): filtered[i] == 0
+		else: filtered[i] = statistics.median([h[i-1],h[i], h[i+1]])
+	return filtered	
 
 
-#------------------------------------
-#	Функции принадлежности к 4м  множествам
 
-def dark_func(z,a,b):
-	if (z<= a): 
-		y = 1
-	elif (z>a and z<= a+b):
-		y = 1 - (z-a) / b
-	else:
-		y = 0
-	return y
+def find_local_max(h):
+	max = 255
+	local_max = dict(enumerate([0]*(max+1)))
+	j = 0
+	for i in range(0, max+1):		
+		if (i > 0 and i < max):
+			if (h[i+1]==0 and  h[i-1]==0):
+				local_max[j] = 0
+			elif ((h[i-1] == h[i+1] and h[i] >= h[i+1] ) or (h[i-1] < h[i] and h[i+1] < h[i])):
+				local_max[j] = h[i]
+			else:
+				local_max[j] = 0
+		j = j +1	
+	return local_max
 
-def grey_func(z, a,b,c):
-	if (z < a and z >= a-b):
-		y = 1 - (a-z)/b 
-	elif (a<=z and z<= a+c):
-		y = 1 - (z-a)/c
-	else:
-		y = 0
-	return y
+def find_regions(h):
+	max = 255
+	right_index = 0
+	left_index = 0
+	for i in range(max,-1,-1):
+		if (h[i]>0): 
+			right_index = i;
+			break			
+	for i in range(0,(max+1)):
+		if (h[i]>0): 
+			left_index = i;
+			break	
+	step = int((right_index-left_index)/2)
+	
+	#med1 = statistics.median([h[i] for i in range(left_index+1, left_index+step)])
+	med1 = statistics.median([h[i] for i in range(left_index, left_index+step) if (h[i] > 0)])
+	med2 = statistics.median([h[i] for i in range(left_index+step, right_index) if (h[i] > 0)])
 
-def grey_right_func(z, a,b,c):
-	if (z < a and z >= a-b):
-		y = 1 - (a-z)/b 
-	elif (a<=z and z<= a+c):
-		y = 1 - (z-a)/c
-	else:
-		y = 0
-	return y
+	medpos1 = [i for i in range(left_index+1, left_index+step) if (h[i] == med1)]
+	medpos2 = [i for i in range(left_index+step, right_index) if (h[i] == med2)]
 
-def highlight_func(z,a,b):
-	if (a-b <=z and z <= a):
-		y = 1 - (a-z)/b 
-	elif (z>= a):
-		y = 1
+	return (left_index, right_index, (med1, medpos1), (med2, medpos2))
+
+#-------------------------------------------------------------------------------------------------------------
+#	Функции принадлежности к множествам
+#	и функция вывода множест в виде графиков
+
+def sigma_left_func(z,a,b, max_top=1):
+	if (z > a and z < b):
+		y = (1 - (z-a)/(b-a) )*max_top
+	elif (z<= a):
+		y = 1*max_top
 	else:
 		y = 0
 	return y	
 
-#----------------------
+def trianglural_func(z, a,b,c, max_top=1):
+	if (z < b and z >= a):
+		y = (1 - (b-z)/(b-a) )*max_top
+	elif (z >= b and z < c):
+		y = (1 - (z-b)/(c-b) )*max_top
+	else:
+		y = 0
+	return y
 
-def defuzification(z,vd,vg,vrg, vb, dark_params, grey_params,grey_right_param,  white_params ):
-	ud = dark_func(z=z,a=dark_params["a"],b=dark_params["b"])
-	ug = grey_func(z=z,a=grey_params["a"],b=grey_params["b"],c=grey_params["c"])
-	ugr = grey_right_func(z=z,a=grey_right_param["a"],b=grey_right_param["b"],c=grey_right_param["c"])
-	ub = highlight_func(z=z,a=white_params["a"],b=white_params["b"])
-	#print("x:{0},ud:{1},ug:{2},ub:{3}".format(z,ud,ug,ub))
-	a = ud*vd+ug*vg+ugr*vrg+ub*vb
-	b = ud+ug+ugr+ub
+
+def sigma_right_func(z,a,b, max_top=1):
+	if (z > a and z <= b):
+		y = (1 - (b-z)/(b-a) )*max_top
+	elif (z>= b):
+		y = 1*max_top
+	else:
+		y = 0
+	return y	
+
+def plt_member_functions(params, member_vds, max_top=1):
+	a,b,c,d,e				= params
+	dark_func_dots			= [a,b] # трапеция
+	grey_func_dots			= [a,b,c] # треугольная функция
+	grey_mid_func_dots		= [b,c,d] # треугольная функция
+	grey_right_func_dots	= [c,d,e] # треугольная функция	
+	white_func_dots			= [d, e] #трапеция
+
+	y_0		= [sigma_left_func(x,a,b, max_top=max_top) for x in range(0,256)]
+	y_1 	= [trianglural_func(x,a,b,c, max_top=max_top) for x in range(0,256)]	
+	y_2 	= [trianglural_func(x,b,c,d, max_top=max_top) for x in range(0,256)]	
+	y_3 	= [trianglural_func(x,c,d,e, max_top=max_top) for x in range(0,256)]	
+	y_4 	= [sigma_right_func(x,d,e, max_top=max_top) for x in range(0,256)]	
+
+	y_5		= [x*15 for x in range(0,255)]
+	x_5		= [member_vds[0]]*255
+	y_6		= [x*15 for x in range(0,255)]
+	x_6		= [member_vds[1]]*255
+	y_7		= [x*15 for x in range(0,255)]
+	x_7		= [member_vds[2]]*255
+	y_8		= [x*15 for x in range(0,255)]
+	x_8		= [member_vds[3]]*255
+	y_9		= [x*15 for x in range(0,255)]
+	x_9		= [member_vds[4]]*255
+
+
+
+	x 		= range(0,256)	
+	
+	return plt.plot(x, y_0, x, y_1, x, y_2, x, y_3, x, y_4, x_5, y_5,  x_6, y_6,  x_7, y_7,  x_8, y_8,  x_9, y_9)
+
+#-------------------------------------------------------------------------------------------------------------
+
+# 	описание формулы на странице 233, Мир цифровой обработки 
+def defuzification(ums, vds ):
+	(a, b) = 0, 0
+	for i in range(0,len(ums)):
+		a = a + ums[i]*vds[i]
+		b = b + ums[i]
 	v = a/b
-	print("x:{0}, | a:{1},b:{2} | v:{3};".format(z, a,b,v))
+	#print("x:{0}, | a:{1},b:{2} | v:{3};".format(z, a,b,v))
 
 	return int(v)
 
-def get_defuzzification_list():
-	(vd,vg,vrg, vb)			= (0,100,150, 255)
-	dark_func_dots			= [0,30] # трапеция
-	grey_func_dots			= [0,30,190] # треугольная функция
-	grey_right_func_dots	= [30,190,255] # треугольная функция	
-	white_func_dots			= [190, 255] #трапеция
-
-	dark_params 		= {"a":dark_func_dots[0], "b":dark_func_dots[1]-dark_func_dots[0]}
-	grey_params 		= {"a":grey_func_dots[1], "b":grey_func_dots[1]-grey_func_dots[0], "c":grey_func_dots[2]-grey_func_dots[1]}
-	grey_right_param 	= {"a":grey_right_func_dots[1], "b":grey_right_func_dots[1]-grey_right_func_dots[0], "c":grey_right_func_dots[2]-grey_right_func_dots[1]}
-	white_params 		= {"a":white_func_dots[1], "b":white_func_dots[1]-white_func_dots[0]}
-
+def get_defuzzification_list(params, vds):
+	a,b,c,d,e		= params
+	
 	defuzz_list = []
-	for i in range(0, 256):
-		defuzz_list.append(defuzification(i,vd,vg,vrg, vb, dark_params, grey_params,grey_right_param, white_params))
-
+	for z in range(0, 256):
+		ums 			= []
+		ums.append(sigma_left_func(z, a,b))
+		ums.append(trianglural_func(z, a,b,c))
+		ums.append(trianglural_func(z, b,c,d))
+		ums.append(trianglural_func(z, c,d,e))
+		ums.append(sigma_right_func(z, d,e))		
+		defuzz_list.append(defuzification(ums,vds))
 	return  defuzz_list
 
 
@@ -126,21 +204,57 @@ def show_graphs(graphs, width, height, image_filename_path=""):
 	plt.close()
 
 
+
+
+
+
+
+
+def show_graph(graph, member_params, member_vds, image_filename_path=""):
+	max = 255
+	#plt.figure(figsize=(30, 20))
+	
+	plt.tick_params(axis='both', which='major', labelsize=5)
+	plt.tick_params(axis='both', which='minor', labelsize=8)
+	bar_tiks = []
+	for i in range(0,max+1):
+		val = list(graph[1])[i]
+		if (val > 0):
+			bar_tiks.append(i)
+		else:		
+			bar_tiks.append("")
+
+	plt.bar(graph[0], graph[1], tick_label=bar_tiks, )
+
+	plt_member_functions(member_params, member_vds, max_top=4000)
+	
+	image_filename 		= image_filename_path.split("\\")[-1]
+	image_path			=  "\\".join(image_filename_path.split("\\")[:-1])
+	#plt.xticks(range(0, 256), range(0,256), rotation=90)
+	for i in range(0,max+1):
+		val = list(graph[1])[i]
+		if (val > 0):
+			plt.text(x = i , y = val, s = val, ha='center', va='bottom', size = 5)
+
+	if (image_filename_path):
+		plt.savefig(image_path+"\\processed\\"+image_filename+"_figure.png")
+	else:
+		plt.show()
+
+	plt.close()
+
 #-----------------------------------------
 
-
-
-def get_fuzzy_image(img):
+def get_fuzzy_image(img, params, vds):
 	height, width 	= img.shape	
 	fuzzy_image 	= np.zeros(shape=[height, width], dtype=np.uint8)
-	fuzzy_list		= get_defuzzification_list()
+	fuzzy_list		= get_defuzzification_list(params, vds)
 	for i in range(0,width):
 		for j in range(0, height):
 			pixel_val = img[j,i]			
 			new_val = 	fuzzy_list[pixel_val]	
 			fuzzy_image[j,i] = new_val
 	return fuzzy_image
-
 
 
 def fuzzy_process(path):
@@ -150,42 +264,63 @@ def fuzzy_process(path):
 	img 				= cv2.imread(path, cv2.IMREAD_GRAYSCALE)
 	height, width 		= img.shape
 
-	fuzzy_image 		= get_fuzzy_image(img)
+	member_params		= (14,24,91,203,251)
+	member_vds			= [0,63,126, 188, 255]
 
-	src_hyst 			= build_hist(img)
+	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
+
+	src_hyst 			= build_hist(img)	
 	fuzz_hyst 			= build_hist(fuzzy_image)
+
+	filtered_h			= filtered_hist(src_hyst)
+	filtered_fuzzy		= filtered_hist(fuzz_hyst)
 
 	
 	graph_src_hyst		= [src_hyst.keys(), src_hyst.values()]
 	graph_fuzz_hyst		= [fuzz_hyst.keys(), fuzz_hyst.values()]
 
-	src_deriv			= build_derivative(src_hyst)
-	fuzz_deriv			= build_derivative(fuzz_hyst)
+	graph_filtered_hyst = [filtered_h.keys(), filtered_h.values()]
+	graph_fuzz_filtered_hyst = [filtered_fuzzy.keys(), filtered_fuzzy.values()]
 
-	graph_src_deriv		= [src_deriv.keys(), src_deriv.values()]
-	graph_fuz_deriv		= [fuzz_deriv.keys(), fuzz_deriv.values()]
 
-	show_graphs( [
-		graph_src_hyst, 
-		graph_fuzz_hyst,
-		graph_src_deriv, 
-		graph_fuz_deriv		
-	], width=2, height=2, image_filename_path=path)
+	src_scnd_deriv		= build_second_derivative(src_hyst)
+	local_max			= find_local_max(src_hyst)
+	local_filt_max		= find_local_max(filtered_h)
+
+	
+	graph_src_maxs		= [local_max.keys(), local_max.values()]
+	graph_filt_maxs		= [local_filt_max.keys(), local_filt_max.values()]
+	graph_sec_der		= [src_scnd_deriv.keys(), src_scnd_deriv.values()]
+
+	""" 	show_graphs( [
+			graph_src_hyst, 
+			graph_filtered_hyst,
+			graph_src_maxs, 
+			graph_filt_maxs		
+		], width=2, height=2, image_filename_path=path) """
+	print(find_regions(local_max))
+	#show_graph(graph_src_hyst)
+	
+	#show_graph(graph_sec_der)
+
+
+
 
 	cv2.imwrite(image_path+"\\processed\\"+image_filename, fuzzy_image)
+	show_graph(graph_src_maxs, member_params, member_vds)
+	#show_graph(graph_fuzz_filtered_hyst, member_params)
 
 
 #------------------------------MAIN-----------------------------------------
 
 src_path = "D:\\resilio\\ip_lib_ed\\src_images\\dslr\\tif\\fuzzy\\*.tif"
 
-
 images 		= glob.glob(src_path)
 img_amount 	= len(images)
 img_counter = 0
 for image in images:
 	img_counter = img_counter + 1
-	print("{0} of {1}".format(img_counter, img_amount))
+	#print("{0} of {1}".format(img_counter, img_amount))
 	fuzzy_process(image)
 
 #concat_images = np.concatenate( (my_resize(img4,50), my_resize(img4, 50)), axis=1)
