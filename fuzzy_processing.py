@@ -92,6 +92,22 @@ def find_regions(h):
 
 	return (left_index, right_index, (med1, medpos1), (med2, medpos2))
 
+def cumul_hist_val(histogram, grey):
+	#print(histogram)
+	cum = 0
+	for i in range(0, grey):
+		
+		cum = cum + histogram[i]
+	return cum
+
+def cumulative_function(histogram):
+	cum_dict = {}
+	for i in range(0,256):
+		cum_dict[i] =  cumul_hist_val(histogram,i)
+	
+	return (cum_dict.keys(), cum_dict.values())
+
+
 #-------------------------------------------------------------------------------------------------------------
 #	Функции принадлежности к множествам
 #	и функция вывода множест в виде графиков
@@ -183,9 +199,34 @@ def get_defuzzification_list(params, vds):
 		defuzz_list.append(defuzification(ums,vds))
 	return  defuzz_list
 
+
+
+#-------------------------------------------------------------------------------------------------------------
+
+# 	графики
+#  
+
+
+def show_cdf_func(h):
+	graph = cumulative_function(h)
+	
+	plt.plot(list(graph[0]),list(graph[1]) )
+	plt.show()	
+
+def show_cdf_derivative(h):
+	cdf_graph 	= cumulative_function(h)
+	cdf_dict	= dict(zip(cdf_graph[0], cdf_graph[1]))
+	deriv_graph = build_first_derivative(cdf_dict)
+	plt.plot(list(deriv_graph.keys()),list(deriv_graph.values()) )
+	plt.show()		
+	
+
+
+
 def show_transformation_func(member_params, member_vds ):
 	plt.plot(list(range(0,256)), get_defuzzification_list(member_params, member_vds), list(range(0,256)), list(range(0,256)))
 	plt.show()
+
 
 def show_graphs(graphs, width, height, image_filename_path=""):
 	figure, axs 		= plt.subplots(height, width,  gridspec_kw={'hspace': 0.5, 'wspace': 0.5}, figsize=(30,20))
@@ -204,20 +245,14 @@ def show_graphs(graphs, width, height, image_filename_path=""):
 		plt.savefig(image_path+"\\processed\\"+image_filename+"_figure.png")
 	else:
 		plt.show()
-	figure.clf()
 	plt.close()
-
-
-
-
-
-
 
 
 def show_graph(graph, member_params, member_vds, image_filename_path=""):
 	max = 255
 	#plt.figure(figsize=(30, 20))
-	
+	#plt.cla()
+	#plt.clf()
 	plt.tick_params(axis='both', which='major', labelsize=5)
 	plt.tick_params(axis='both', which='minor', labelsize=8)
 	bar_tiks = []
@@ -230,7 +265,7 @@ def show_graph(graph, member_params, member_vds, image_filename_path=""):
 
 	plt.bar(graph[0], graph[1], tick_label=bar_tiks, )
 
-	plt_member_functions(member_params, member_vds, max_top=4000)
+	plt_member_functions(member_params, member_vds, max_top=35000)
 	
 	
 	image_filename 		= image_filename_path.split("\\")[-1]
@@ -243,10 +278,10 @@ def show_graph(graph, member_params, member_vds, image_filename_path=""):
 
 	if (image_filename_path):
 		plt.savefig(image_path+"\\processed\\"+image_filename+"_figure.png")
-	else:
+	else:		
 		plt.show()
 
-	plt.close()
+	
 
 #-----------------------------------------
 
@@ -262,14 +297,14 @@ def get_fuzzy_image(img, params, vds):
 	return fuzzy_image
 
 
-def fuzzy_process(path):
+def fuzzy_process(path, wrt_path):
 	image_filename 		= path.split("\\")[-1]
 	image_path			=  "\\".join(path.split("\\")[:-1])
 
 	img 				= cv2.imread(path, cv2.IMREAD_GRAYSCALE)
 	height, width 		= img.shape
 
-	member_params		= (14,63,69,170,251)
+	member_params		= (0,30,80,229,255)
 	member_vds			= [0,63,126, 188, 255]
 
 	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
@@ -292,10 +327,12 @@ def fuzzy_process(path):
 	local_max			= find_local_max(src_hyst)
 	local_filt_max		= find_local_max(filtered_h)
 
-	
+
 	graph_src_maxs		= [local_max.keys(), local_max.values()]
 	graph_filt_maxs		= [local_filt_max.keys(), local_filt_max.values()]
 	graph_sec_der		= [src_scnd_deriv.keys(), src_scnd_deriv.values()]
+
+
 
 	""" 	show_graphs( [
 			graph_src_hyst, 
@@ -304,23 +341,28 @@ def fuzzy_process(path):
 			graph_filt_maxs		
 		], width=2, height=2, image_filename_path=path) """
 	print(find_regions(local_max))
-	#show_graph(graph_src_hyst)
+	
 	
 	#show_graph(graph_sec_der)
 
-
-
-
-	cv2.imwrite(image_path+"\\processed\\"+image_filename, fuzzy_image)
+	cv2.imwrite(wrt_path+image_filename, fuzzy_image)
+	
+	#show_cdf_derivative(src_hyst)
+	
+	show_cdf_func(src_hyst)	
 	show_graph(graph_src_maxs, member_params, member_vds)
 	show_transformation_func(member_params, member_vds)
+	#show_graph(graph_src_hyst, member_params, member_vds)
+	show_graph(graph_fuzz_hyst, member_params, member_vds)
+
 	
-	#show_graph(graph_fuzz_filtered_hyst, member_params)
+	#
 
 
 #------------------------------MAIN-----------------------------------------
 
-src_path = "D:\\resilio\\ip_lib_ed\\src_images\\dslr\\tif\\fuzzy\\*.tif"
+src_path = "D:\\resilio\\ip_lib_ed\\src_images\\dslr\\tif\\fuzzy\\src\\*.tif"
+wrt_path = "D:\\resilio\\ip_lib_ed\\src_images\\dslr\\tif\\fuzzy\\processed\\"
 
 images 		= glob.glob(src_path)
 img_amount 	= len(images)
@@ -328,7 +370,7 @@ img_counter = 0
 for image in images:
 	img_counter = img_counter + 1
 	#print("{0} of {1}".format(img_counter, img_amount))
-	fuzzy_process(image)
+	fuzzy_process(image, wrt_path)
 
 #concat_images = np.concatenate( (my_resize(img4,50), my_resize(img4, 50)), axis=1)
 #cv2.imshow('modified_image',concat_images )
