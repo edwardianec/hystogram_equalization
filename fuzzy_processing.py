@@ -107,6 +107,28 @@ def cumulative_function(histogram):
 	
 	return (cum_dict.keys(), cum_dict.values())
 
+def find_equal_regions(h):
+	sum_pix = cumul_hist_val(h, 255)
+	region = sum_pix//7
+	print("pixel_counter: {0}; region: {1}".format(sum_pix, region))
+	cum = 0
+	j = 0
+	region_grade = []
+	for i in range(0, 256):
+		cum = cum + h[i]
+		if (cum > region): 
+			cum = 0
+			region_grade.append((i+1))
+			
+			if (j == 5):
+				break
+			j = j+1
+	for i in range(0, len(region_grade)):
+		if (i+1==len(region_grade)):
+			avarage = get_region_avarage(region_grade[i], 255)
+		else: avarage = get_region_avarage(region_grade[i], region_grade[i+1])
+	return region_grade
+
 
 #-------------------------------------------------------------------------------------------------------------
 #	Функции принадлежности к множествам
@@ -296,7 +318,7 @@ def show_plot_graph(graph, member_params, member_vds, image_filename_path=""):
 
 
 
-	plt.plot(list(graph[0]), list(graph[1]))
+	plt.bar(list(graph[0]), list(graph[1]), color=(0.6, 0.4, 0.6, 0.3))
 	#plt.plot(graph[0], graph[1])
 
 	plt_member_functions(member_params, member_vds, max_top=35000)
@@ -335,7 +357,7 @@ def fuzzy_process(path, wrt_path):
 
 	# photo 9737
 	# member_params		= [0,10,25,45,75,140,252,255]
-	member_params		= [0,5,27,35,56,66,80,255]
+	member_params		= [0,5,8,15,56,66,76,255]
 	member_vds			= [0,35,70,105,140,175,210,255]
 
 	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
@@ -377,13 +399,14 @@ def fuzzy_process(path, wrt_path):
 	#show_graph(graph_sec_der)
 
 	cv2.imwrite(wrt_path+image_filename, fuzzy_image)
-	
+	print(find_equal_regions(src_hyst))
 	#show_cdf_derivative(src_hyst)
 	plt.plot(member_params, [0,0,0,0,0,0,0,0], 'ro')
 	show_cdf_func(src_hyst)	
 	show_transformation_func(member_params, member_vds)
 	plt.bar(list(fuzz_hyst.keys()), list(fuzz_hyst.values()),color=(0.2, 0.4, 0.6, 0.3))
-	show_plot_graph(graph_src_hyst, member_params, member_vds)
+	plt.bar(list(local_max.keys()), list(local_max.values()),color=(0.6, 0.4, 0.6, 0.7))
+	show_plot_graph(graph_src_hyst,  member_params, member_vds)
 	
 	#show_graph(graph_src_hyst, member_params, member_vds)
 	#show_graph(graph_fuzz_hyst, member_params, member_vds)
