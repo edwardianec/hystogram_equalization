@@ -112,7 +112,8 @@ def cumulative_function(histogram):
 #	Функции принадлежности к множествам
 #	и функция вывода множест в виде графиков
 
-def sigma_left_func(z,a,b, max_top=1):
+def sigma_left_func(z,params, max_top=1):
+	a,b = params[0], params[1]
 	if (z > a and z < b):
 		y = (1 - (z-a)/(b-a) )*max_top
 	elif (z<= a):
@@ -121,7 +122,8 @@ def sigma_left_func(z,a,b, max_top=1):
 		y = 0
 	return y	
 
-def trianglural_func(z, a,b,c, max_top=1):
+def trianglural_func(z, params, max_top=1):
+	a,b,c = params[0], params[1], params[2]	
 	if (z < b and z >= a):
 		y = (1 - (b-z)/(b-a) )*max_top
 	elif (z >= b and z < c):
@@ -131,7 +133,8 @@ def trianglural_func(z, a,b,c, max_top=1):
 	return y
 
 
-def sigma_right_func(z,a,b, max_top=1):
+def sigma_right_func(z,params, max_top=1):
+	a,b = params[0], params[1]	
 	if (z > a and z <= b):
 		y = (1 - (b-z)/(b-a) )*max_top
 	elif (z>= b):
@@ -141,35 +144,36 @@ def sigma_right_func(z,a,b, max_top=1):
 	return y	
 
 def plt_member_functions(params, member_vds, max_top=1):
-	a,b,c,d,e				= params
-	dark_func_dots			= [a,b] # трапеция
-	grey_func_dots			= [a,b,c] # треугольная функция
-	grey_mid_func_dots		= [b,c,d] # треугольная функция
-	grey_right_func_dots	= [c,d,e] # треугольная функция	
-	white_func_dots			= [d, e] #трапеция
+	max_grade 	= 256
+	y 			= []
+	#member_params		= [0,30,60,80,100,150,229,255]
+	y.append( [sigma_left_func(x, params[0:2], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [trianglural_func(x,params[0:3], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [trianglural_func(x,params[1:4], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [trianglural_func(x,params[2:5], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [trianglural_func(x,params[3:6], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [trianglural_func(x,params[4:7], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [trianglural_func(x,params[5:8], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [sigma_right_func(x,params[6:8], max_top=max_top) for x in range(0,max_grade)]		)
 
-	y_0		= [sigma_left_func(x,a,b, max_top=max_top) for x in range(0,256)]
-	y_1 	= [trianglural_func(x,a,b,c, max_top=max_top) for x in range(0,256)]	
-	y_2 	= [trianglural_func(x,b,c,d, max_top=max_top) for x in range(0,256)]	
-	y_3 	= [trianglural_func(x,c,d,e, max_top=max_top) for x in range(0,256)]	
-	y_4 	= [sigma_right_func(x,d,e, max_top=max_top) for x in range(0,256)]	
-
-	y_5		= [x*15 for x in range(0,255)]
-	x_5		= [member_vds[0]]*255
-	y_6		= [x*15 for x in range(0,255)]
-	x_6		= [member_vds[1]]*255
-	y_7		= [x*15 for x in range(0,255)]
-	x_7		= [member_vds[2]]*255
-	y_8		= [x*15 for x in range(0,255)]
-	x_8		= [member_vds[3]]*255
-	y_9		= [x*15 for x in range(0,255)]
-	x_9		= [member_vds[4]]*255
-
+	y_vds	= [x*15 for x in range(0,(max_grade-1))]
+	x_vds	= []
+	x_vds.append( [member_vds[0]]*(max_grade-1))
+	x_vds.append( [member_vds[1]]*(max_grade-1))
+	x_vds.append( [member_vds[2]]*(max_grade-1))
+	x_vds.append( [member_vds[3]]*(max_grade-1))
+	x_vds.append( [member_vds[4]]*(max_grade-1))
+	x_vds.append( [member_vds[5]]*(max_grade-1))
+	x_vds.append( [member_vds[6]]*(max_grade-1))
+	x_vds.append( [member_vds[7]]*(max_grade-1))
 
 
-	x 		= range(0,256)	
+	x 		= range(0,max_grade)	
 	
-	return plt.plot(x, y_0, x, y_1, x, y_2, x, y_3, x, y_4, x_5, y_5,  x_6, y_6,  x_7, y_7,  x_8, y_8,  x_9, y_9)
+	return plt.plot(
+		x, y[0], x, y[1], x, y[2], x, y[3], x, y[4], x, y[5], x, y[6], x, y[7],
+		x_vds[0], y_vds, x_vds[1], y_vds, x_vds[2], y_vds, x_vds[3], y_vds, x_vds[4], y_vds, x_vds[5], y_vds, x_vds[6], y_vds, x_vds[7], y_vds
+	)
 
 
 #-------------------------------------------------------------------------------------------------------------
@@ -186,16 +190,21 @@ def defuzification(ums, vds ):
 	return int(v)
 
 def get_defuzzification_list(params, vds):
-	a,b,c,d,e		= params
+	max_grade = 256
+
 	
 	defuzz_list = []
-	for z in range(0, 256):
+	for z in range(0, max_grade):
 		ums 			= []
-		ums.append(sigma_left_func(z, a,b))
-		ums.append(trianglural_func(z, a,b,c))
-		ums.append(trianglural_func(z, b,c,d))
-		ums.append(trianglural_func(z, c,d,e))
-		ums.append(sigma_right_func(z, d,e))		
+		ums.append(sigma_left_func(z,  params[0:2]))
+		ums.append(trianglural_func(z, params[0:3]))
+		ums.append(trianglural_func(z, params[1:4]))
+		ums.append(trianglural_func(z, params[2:5]))
+		ums.append(trianglural_func(z, params[3:6]))
+		ums.append(trianglural_func(z, params[4:7]))
+		ums.append(trianglural_func(z, params[5:8]))
+		ums.append(sigma_right_func(z, params[6:8]))
+
 		defuzz_list.append(defuzification(ums,vds))
 	return  defuzz_list
 
@@ -264,6 +273,7 @@ def show_graph(graph, member_params, member_vds, image_filename_path=""):
 			bar_tiks.append("")
 
 	plt.bar(graph[0], graph[1], tick_label=bar_tiks, )
+	#plt.plot(graph[0], graph[1])
 
 	plt_member_functions(member_params, member_vds, max_top=35000)
 	
@@ -281,6 +291,24 @@ def show_graph(graph, member_params, member_vds, image_filename_path=""):
 	else:		
 		plt.show()
 
+def show_plot_graph(graph, member_params, member_vds, image_filename_path=""):
+	max = 255
+
+
+
+	plt.plot(list(graph[0]), list(graph[1]))
+	#plt.plot(graph[0], graph[1])
+
+	plt_member_functions(member_params, member_vds, max_top=35000)
+	
+	
+	image_filename 		= image_filename_path.split("\\")[-1]
+	image_path			=  "\\".join(image_filename_path.split("\\")[:-1])
+
+	if (image_filename_path):
+		plt.savefig(image_path+"\\processed\\"+image_filename+"_figure.png")
+	else:		
+		plt.show()
 	
 
 #-----------------------------------------
@@ -304,8 +332,11 @@ def fuzzy_process(path, wrt_path):
 	img 				= cv2.imread(path, cv2.IMREAD_GRAYSCALE)
 	height, width 		= img.shape
 
-	member_params		= (0,30,80,229,255)
-	member_vds			= [0,63,126, 188, 255]
+
+	# photo 9737
+	# member_params		= [0,10,25,45,75,140,252,255]
+	member_params		= [0,5,27,35,56,66,80,255]
+	member_vds			= [0,35,70,105,140,175,210,255]
 
 	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
 
@@ -348,12 +379,14 @@ def fuzzy_process(path, wrt_path):
 	cv2.imwrite(wrt_path+image_filename, fuzzy_image)
 	
 	#show_cdf_derivative(src_hyst)
-	
+	plt.plot(member_params, [0,0,0,0,0,0,0,0], 'ro')
 	show_cdf_func(src_hyst)	
-	show_graph(graph_src_maxs, member_params, member_vds)
 	show_transformation_func(member_params, member_vds)
+	plt.bar(list(fuzz_hyst.keys()), list(fuzz_hyst.values()),color=(0.2, 0.4, 0.6, 0.3))
+	show_plot_graph(graph_src_hyst, member_params, member_vds)
+	
 	#show_graph(graph_src_hyst, member_params, member_vds)
-	show_graph(graph_fuzz_hyst, member_params, member_vds)
+	#show_graph(graph_fuzz_hyst, member_params, member_vds)
 
 	
 	#
