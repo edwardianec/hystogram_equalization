@@ -1,7 +1,7 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2
+import cv2, itertools
 import gc
 import glob
 import statistics
@@ -130,6 +130,26 @@ def find_equal_regions(h):
 	return region_grade
 
 
+def maximums(graph, maximums_count):
+	# данный метод позволяет найти максимумы на графике
+	# и выбрать из него только необходимое количество из
+	# всех максимумов. При этом максимумы выбираются начиная
+	# с самых больших значений. 
+	maximums = {}
+	previous = 0
+	for i in range(1, len(graph)):
+		current = graph[i] - graph[i-1]
+		if (current < 0 and previous > 0): maximums[i-1] = graph[i-1]
+		previous = current
+
+	# После того, как мы нашли максимумы, мы должны упорядичить эти
+	# максимумы в порядке убывания, после чего выбрать только необходимое нам количество,
+	# определенное в переменной maximums_count
+	maximums	= {k: v for k, v in sorted(maximums.items(), key=lambda item: item[1], reverse=True)}
+	maximums 	= dict(itertools.islice(maximums.items(),maximums_count))
+	maximums	= dict(sorted(maximums.items()))
+	return maximums
+
 #-------------------------------------------------------------------------------------------------------------
 #	Функции принадлежности к множествам
 #	и функция вывода множест в виде графиков
@@ -250,8 +270,6 @@ def show_cdf_derivative(h):
 	deriv_graph = build_first_derivative(cdf_dict)
 	plt.plot(list(deriv_graph.keys()),list(deriv_graph.values()) )
 	plt.show()		
-	
-
 
 
 def show_transformation_func(member_params, member_vds ):
@@ -355,15 +373,30 @@ def fuzzy_process(path, wrt_path):
 	height, width 		= img.shape
 
 
+
+	
+
+	src_hyst 			= build_hist(img)	
+	
+	#fuzzzyyyyyyyyy
+
+	maxs				= maximums(src_hyst,6)
+	print("Local max list: ",maxs)
 	# photo 9737
 	# member_params		= [0,10,25,45,75,140,252,255]
-	member_params		= [0,5,8,15,56,66,76,255]
+	# member_params		= [0,5,8,15,56,66,76,255]
+	member_params		= list(maxs.keys())
+	member_params.insert(0, 0)
+	print("memeber params", member_params)
+	member_params.append(255)
+	#	this number's list is working properly on 9752 image
+	#	member_params		= [0,5,8,15,56,66,76,255]
+	#	member_vds			= [0,35,70,105,140,175,210,255]
 	member_vds			= [0,35,70,105,140,175,210,255]
 
 	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
-
-	src_hyst 			= build_hist(img)	
 	fuzz_hyst 			= build_hist(fuzzy_image)
+
 
 	filtered_h			= filtered_hist(src_hyst)
 	filtered_fuzzy		= filtered_hist(fuzz_hyst)
@@ -393,13 +426,13 @@ def fuzzy_process(path, wrt_path):
 			graph_src_maxs, 
 			graph_filt_maxs		
 		], width=2, height=2, image_filename_path=path) """
-	print(find_regions(local_max))
+
 	
 	
 	#show_graph(graph_sec_der)
 
 	cv2.imwrite(wrt_path+image_filename, fuzzy_image)
-	print(find_equal_regions(src_hyst))
+	#print(find_equal_regions(src_hyst))
 	#show_cdf_derivative(src_hyst)
 	plt.plot(member_params, [0,0,0,0,0,0,0,0], 'ro')
 	show_cdf_func(src_hyst)	
