@@ -214,7 +214,7 @@ def find_equal_regions(h):
 	# посредством смещения в ту или иную сторону.
 
 	sum_pix = cumul_hist_val(h, BIT_DEPTH_MAX_VALUE-1 )
-	region = sum_pix//6
+	region = sum_pix//8
 	print("pixel_counter: {0} pixels in image; 1/6 part of pixels: {1}".format(sum_pix, region))
 	cum = 0
 	j = 0
@@ -227,10 +227,11 @@ def find_equal_regions(h):
 			cum = 0
 			region_grade.append([previos_val, i-1])
 			previos_val = i-1			
-			if (j == 4):
+			if (j == 5):
 				region_grade.append([previos_val, 255])
 			j = j+1
 	
+	print("region grade: ", region_grade)
 
 	return region_grade
 
@@ -281,7 +282,8 @@ def plt_member_functions(params, member_vds, max_top=1):
 	y.append( [trianglural_func(x,params[3:6], max_top=max_top) for x in range(0,max_grade)]		)
 	y.append( [trianglural_func(x,params[4:7], max_top=max_top) for x in range(0,max_grade)]		)
 	y.append( [trianglural_func(x,params[5:8], max_top=max_top) for x in range(0,max_grade)]		)
-	y.append( [sigma_right_func(x,params[6:8], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [trianglural_func(x,params[6:9], max_top=max_top) for x in range(0,max_grade)]		)
+	y.append( [sigma_right_func(x,params[7:10], max_top=max_top) for x in range(0,max_grade)]		)
 
 	y_vds	= [x*15 for x in range(0,(max_grade-1))]
 	x_vds	= []
@@ -293,13 +295,14 @@ def plt_member_functions(params, member_vds, max_top=1):
 	x_vds.append( [member_vds[5]]*(max_grade-1))
 	x_vds.append( [member_vds[6]]*(max_grade-1))
 	x_vds.append( [member_vds[7]]*(max_grade-1))
+	x_vds.append( [member_vds[8]]*(max_grade-1))
 
 
 	x 		= range(0,max_grade)	
 	
 	return plt.plot(
 		#x, y[0], x, y[1], x, y[2], x, y[3], x, y[4], x, y[5], x, y[6], x, y[7],
-		x_vds[0], y_vds, x_vds[1], y_vds, x_vds[2], y_vds, x_vds[3], y_vds, x_vds[4], y_vds, x_vds[5], y_vds, x_vds[6], y_vds, x_vds[7], y_vds
+		x_vds[0], y_vds, x_vds[1], y_vds, x_vds[2], y_vds, x_vds[3], y_vds, x_vds[4], y_vds, x_vds[5], y_vds, x_vds[6], y_vds, x_vds[7], y_vds, x_vds[8], y_vds
 	)
 
 
@@ -330,7 +333,8 @@ def get_defuzzification_list(params, vds):
 		ums.append(trianglural_func(z, params[3:6]))
 		ums.append(trianglural_func(z, params[4:7]))
 		ums.append(trianglural_func(z, params[5:8]))
-		ums.append(sigma_right_func(z, params[6:8]))
+		ums.append(trianglural_func(z, params[6:9]))
+		ums.append(sigma_right_func(z, params[7:10]))
 
 		defuzz_list.append(defuzification(ums,vds))
 	return  defuzz_list
@@ -427,7 +431,7 @@ def show_plot_graph(graph, member_params, member_vds,  equal_regions, image_file
 	#equal_regions = [0] + equal_regions + [255]
 	colors = [
 		(1, 0, 0, 0.4), (0, 0, 1, 0.4), (0, 1, 0, 0.4) , (0, 1, 1, 0.4),
-		(1, 1, 0, 0.4), (1, 0, 1, 0.4), (0, 1, 0.5, 0.4),  (1, 0, 0.5, 0.4)
+		(1, 1, 0, 0.4), (1, 0, 1, 0.4), (0, 1, 0.5, 0.4),  (1, 0,0, 0.4)
 	]
 
 	# каждый кусок 1/6 части гистограммы нам нужно расскрасить
@@ -506,9 +510,15 @@ def image_statisctic(h):
 	right_part 		= pixels[4][1]+pixels[5][1]+pixels[6][1]+pixels[7][1]
 	light_part 		= pixels[6][1]+pixels[7][1]
 	lightest_part	= pixels[7][1]
-	print("left_part: ",left_part)
-	print("dark_part: ",dark_part)
-	print("darkest_part: ",darkest_part)
+
+	print("left_part: \t",left_part)
+	print("dark_part: \t",dark_part)
+	print("darkest_part: \t",darkest_part)
+	print("----------------- \t")
+	print("right_part:\t", right_part)
+	print("light_part:\t", light_part)
+	print("lightest_part:\t", lightest_part)
+
 
 	if (left_part > 70 ):		
 		answer = "картинка темная"
@@ -541,35 +551,23 @@ def fuzzy_process(path, wrt_path):
 	derivative_maxs 	= get_derivative_maxs(median_first_derivative)
 	target_histogram	= median_histogram
 	
-	
 	equal_regions 		= find_equal_regions(src_hyst)
-	all_maxs			= maximums(src_hyst)
-	choosen_maxs 		= list(all_maxs.keys())[0:4]
-
-	#print("src_hyst: \t", src_hyst)
-	#
-	# print("median_histogram: \t", median_histogram)
-	#print("all_maxs: \t", all_maxs)	
-	print("derivative_maxs: \t", derivative_maxs)	
-	print("equal_regions: \t", equal_regions)
-	print("choosen maxs: \t", choosen_maxs)
+	
 
 	
-	#member_vds			= [0,25,50,85,120,155,190,235]
-	#member_vds			= [0,35,70,105,140,175,210,255]
-	#left
-	member_vds			= [0,35,70,105,140,175,210,255]
-	# right
-	#member_vds			= [0,55,105,135,170,210,235,255]
+	
+	#member_vds			= [[0,32],[64, 96],[96, 128],[128, 160],[160, 192],[192, 224],[192, 224],[224, 256]]
+	member_vds			= [0,32,64,96,128,160,192,224, 255]
 	region_stat 		= analyze_histogram(src_hyst, member_vds)
 
-	member_params		= get_member_params(src_hyst,region_stat, member_vds)
+	#member_params		= get_member_params(src_hyst,region_stat, member_vds)
+	member_params		= [0, 8,24, 36, 48, 76, 128, 192, 255]
 	
 	#member_params 		= [borders[0]] + [5,7, 13, 22,36,80]+ [borders[1]]
 	
 	print("memeber params:  \t", member_params)
 	print("region_stat: \t", region_stat)
-	member_params		=  [24, 50,80,115,140,175,205,255]
+	
 
 	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
 	fuzz_hyst 			= build_hist(fuzzy_image)
@@ -588,7 +586,7 @@ def fuzzy_process(path, wrt_path):
 	plt.bar(list(src_hyst.keys()), list(src_hyst.values()), color=(0, 0, 1, 0.6))
 	plt.bar(list(fuzz_hyst.keys()), list(fuzz_hyst.values()), color=(1, 0, 0, 0.6))
 	plt.show()	
-	plt.plot(member_params, [0,0,0,0,0,0,0,0], 'ro')
+	plt.plot(member_params, [0,0,0,0,0,0,0,0,0], 'ro')
 
 	#show_cdf_func(src_hyst)	
 	#show_transformation_func(member_params, member_vds)
