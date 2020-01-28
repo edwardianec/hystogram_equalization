@@ -483,7 +483,62 @@ def apply_lut(img,):
 			colored_image[j,i] = new_val	
 	return colored_image
 
-def image_statisctic(h):
+
+def region_devider(h, borders, region_total, needed_dots, right):
+	start = borders[0]
+	h_values = h.values()
+	end = borders[1]
+	if (needed_dots == 1): divider = 2
+	else: divider = needed_dots
+	one_part = region_total/divider
+	temp_sum = 0
+	dots = []
+	for index, count in list(enumerate(h_values))[start:end]:
+		temp_sum = temp_sum + count
+		if (temp_sum >= one_part): 
+			temp_sum = 0
+			dots.append(index)
+			if (needed_dots == 1): 
+				break
+			else: 
+				if (len(dots) == (needed_dots-1)):
+					if (right): dots.append(end)
+					else: dots.append(start)
+					break
+	return dots
+
+def calculate_points(h, sum_pix, region_pixels, regions, h_borders):
+	sorted_regions = sorted(region_pixels, reverse=True)
+	total_dots = []
+	for region in sorted_regions:
+		this_index = region_pixels.index(region)
+		percentage = (region/sum_pix)*100
+		if (this_index < 4): right = True
+		else: right = False
+		if (percentage >= 80): dots_count = 5			
+		elif (percentage >= 40): dots_count = 3
+		elif (percentage >= 30): dots_count = 2
+		else: dots_count = 1
+		print("this_index: \t", this_index)
+		print("percentage: \t", percentage)
+		print("dots_count: \t", dots_count)
+		print("right: \t", right)
+
+		
+
+		dots = region_devider(h, regions[this_index], region, dots_count, right)
+		print("dots: \t", dots)
+		total_dots = total_dots + dots
+		if (len(total_dots) == 7): 
+			break
+	total_dots = [h_borders[0]] + sorted(total_dots) + [h_borders[1]]
+	print("total_dots \t", total_dots)
+	return total_dots
+
+
+
+
+def image_statisctic(h, member_vds):
 	# делим картинку на 8 частей
 	# в каждой из частей определяем - какое количество
 	# пикселей там присутсвует. Если в левой части гистограммы большое скопление - 
@@ -491,6 +546,8 @@ def image_statisctic(h):
 	# Если в каждой части примерно равное количество - картинка выровненная.
 	# Если большая часть в середине - то картинка не контрастная - необходимо немного
 	# переместить пиксели влево и вправо, чтобы добиться небольшого контраста. 
+	print("********************** image_statisctic **********************")
+
 	sum_pix = cumul_hist_val(h, BIT_DEPTH_MAX_VALUE-1 )
 	region 	= BIT_DEPTH_MAX_VALUE//8	
 	regions = [[j*region, region*j+region] for j in range(0,8)]
@@ -500,17 +557,24 @@ def image_statisctic(h):
 		start = region[0]
 		end = region[1]
 		pix_region = sum(h_values[start:end])
-		perc_region = int((pix_region/sum_pix)*100)
-		pixels.append([pix_region, perc_region])
+		pixels.append(pix_region)
+	print("pixels in regions: {0} \t".format(pixels))
+	
+	borders = histogram_borders(h, member_vds)	
+	total_dots = calculate_points(h, sum_pix, pixels, regions, borders)
+	
 
-	left_part 		= pixels[0][1]+pixels[1][1]+pixels[2][1]+pixels[3][1]
-	dark_part 		= pixels[0][1]+pixels[1][1]
-	darkest_part	= pixels[0][1]
 
-	right_part 		= pixels[4][1]+pixels[5][1]+pixels[6][1]+pixels[7][1]
-	light_part 		= pixels[6][1]+pixels[7][1]
-	lightest_part	= pixels[7][1]
 
+	left_part 		= pixels[0]+pixels[1]+pixels[2]+pixels[3]
+	dark_part 		= pixels[0]+pixels[1]
+	darkest_part	= pixels[0]
+
+	right_part 		= pixels[4]+pixels[5]+pixels[6]+pixels[7]
+	light_part 		= pixels[6]+pixels[7]
+	lightest_part	= pixels[7]
+
+	print("regions: \t", regions)
 	print("left_part: \t",left_part)
 	print("dark_part: \t",dark_part)
 	print("darkest_part: \t",darkest_part)
@@ -534,9 +598,10 @@ def image_statisctic(h):
 		
 		
 	
-	print("********************** STATISTICS **********************")	
-	print("pixels in regions: {0} \t".format(pixels))
+		
+	
 	print("quality: {0} \t".format(answer))
+	return total_dots
 
 def fuzzy_process(path, wrt_path):
 	image_filename 		= path.split("\\")[-1]
@@ -554,14 +619,19 @@ def fuzzy_process(path, wrt_path):
 	equal_regions 		= find_equal_regions(src_hyst)
 	
 
-	
+	member_regions		= [[0, 15, 32],[45,53,64],[75],[115],[],[],[],[255]]
+	member_params = []
+	for g in range(len(member_regions)):
+		member_params		= member_params + member_regions[g] 	
 	
 	#member_vds			= [[0,32],[64, 96],[96, 128],[128, 160],[160, 192],[192, 224],[192, 224],[224, 256]]
 	member_vds			= [0,32,64,96,128,160,192,224, 255]
+	member_params	    = image_statisctic(src_hyst, member_vds)
 	region_stat 		= analyze_histogram(src_hyst, member_vds)
 
 	#member_params		= get_member_params(src_hyst,region_stat, member_vds)
-	member_params		= [0, 8,24, 36, 48, 76, 128, 192, 255]
+
+	#member_params		= [6, 24, 50, 82, 105, 135,175, 212, 255]
 	
 	#member_params 		= [borders[0]] + [5,7, 13, 22,36,80]+ [borders[1]]
 	
@@ -580,20 +650,20 @@ def fuzzy_process(path, wrt_path):
 		cv2.imwrite(wrt_path+"lut_"+image_filename, colored_image) """
 
 	#статистика
-	image_statisctic(src_hyst)
+	
 
 	#графики
-	plt.bar(list(src_hyst.keys()), list(src_hyst.values()), color=(0, 0, 1, 0.6))
-	plt.bar(list(fuzz_hyst.keys()), list(fuzz_hyst.values()), color=(1, 0, 0, 0.6))
-	plt.show()	
-	plt.plot(member_params, [0,0,0,0,0,0,0,0,0], 'ro')
+	#plt.bar(list(src_hyst.keys()), list(src_hyst.values()), color=(0, 0, 1, 0.6))
+	#plt.bar(list(fuzz_hyst.keys()), list(fuzz_hyst.values()), color=(1, 0, 0, 0.6))
+	#plt.show()	
+	#plt.plot(member_params, [0,0,0,0,0,0,0,0,0], 'ro')
 
 	#show_cdf_func(src_hyst)	
 	#show_transformation_func(member_params, member_vds)
 	#show_first_derivative(median_first_derivative)
 	
-	plt.bar(list(fuzz_hyst.keys()), list(fuzz_hyst.values()),color=(0.2, 0.4, 0.6, 0.3))
-	show_plot_graph(graph_target_hist,  member_params, member_vds, equal_regions)
+	#plt.bar(list(fuzz_hyst.keys()), list(fuzz_hyst.values()),color=(0.2, 0.4, 0.6, 0.3))
+	#show_plot_graph(graph_target_hist,  member_params, member_vds, equal_regions)
 	
 	#
 
