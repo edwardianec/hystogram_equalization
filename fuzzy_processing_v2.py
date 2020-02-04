@@ -447,7 +447,7 @@ def show_plot_graph(graph, member_params, member_vds,  equal_regions, image_file
 		plt.savefig(image_path+"\\processed\\"+image_filename+"_figure.png")
 	else:		
 		plt.show()
-	
+	plt.clf()
 
 #-----------------------------------------
 

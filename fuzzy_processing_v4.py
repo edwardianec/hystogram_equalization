@@ -512,13 +512,15 @@ def calculate_points(h, sum_pix, region_pixels, regions, h_borders):
 	total_dots = []
 	for region in sorted_regions:
 		this_index = region_pixels.index(region)
-		percentage = (region/sum_pix)*100
+		percentage = int((region/sum_pix)*100)
 		if (this_index < 4): right = True
 		else: right = False
-		if (percentage >= 80): dots_count = 5			
+		dots_count = 1
+		if (percentage >= 80): dots_count = 5
+		elif (percentage >= 60): dots_count = 4			
 		elif (percentage >= 40): dots_count = 3
-		elif (percentage >= 30): dots_count = 2
-		else: dots_count = 1
+		elif (percentage >= 20): dots_count = 2
+		print("region: \t", region)
 		print("this_index: \t", this_index)
 		print("percentage: \t", percentage)
 		print("dots_count: \t", dots_count)
@@ -538,7 +540,7 @@ def calculate_points(h, sum_pix, region_pixels, regions, h_borders):
 
 
 
-def image_statisctic(h, member_vds):
+def image_statisctic(h, member_vds, sum_pix):
 	# делим картинку на 8 частей
 	# в каждой из частей определяем - какое количество
 	# пикселей там присутсвует. Если в левой части гистограммы большое скопление - 
@@ -548,7 +550,6 @@ def image_statisctic(h, member_vds):
 	# переместить пиксели влево и вправо, чтобы добиться небольшого контраста. 
 	print("********************** image_statisctic **********************")
 
-	sum_pix = cumul_hist_val(h, BIT_DEPTH_MAX_VALUE-1 )
 	region 	= BIT_DEPTH_MAX_VALUE//8	
 	regions = [[j*region, region*j+region] for j in range(0,8)]
 	pixels 	= []
@@ -609,6 +610,7 @@ def fuzzy_process(path, wrt_path):
 
 	img 				= cv2.imread(path, 0)
 	height, width 		= img.shape	
+	print("IMAGE PARAMS: \t", height, width)
 
 	src_hyst 			= build_hist(img)
 	median_histogram	= get_median_histogram(src_hyst)
@@ -626,8 +628,8 @@ def fuzzy_process(path, wrt_path):
 	
 	#member_vds			= [[0,32],[64, 96],[96, 128],[128, 160],[160, 192],[192, 224],[192, 224],[224, 256]]
 	member_vds			= [0,32,64,96,128,160,192,224, 255]
-	member_params	    = image_statisctic(src_hyst, member_vds)
-	region_stat 		= analyze_histogram(src_hyst, member_vds)
+	member_params	    = image_statisctic(src_hyst, member_vds, height*width)
+	#region_stat 		= analyze_histogram(src_hyst, member_vds)
 
 	#member_params		= get_member_params(src_hyst,region_stat, member_vds)
 
@@ -636,7 +638,7 @@ def fuzzy_process(path, wrt_path):
 	#member_params 		= [borders[0]] + [5,7, 13, 22,36,80]+ [borders[1]]
 	
 	print("memeber params:  \t", member_params)
-	print("region_stat: \t", region_stat)
+	#print("region_stat: \t", region_stat)
 	
 
 	fuzzy_image 		= get_fuzzy_image(img, member_params, member_vds)
