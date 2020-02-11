@@ -107,7 +107,7 @@ def get_defuzzification_list(params, vds):
 
 
 def get_fuzzy_image(img, params, vds):
-	height, width, colors 	= img.shape	
+	height, width, = img.shape[0:2]	
 	fuzzy_image 	= np.zeros(shape=[height, width], dtype=np.uint8)
 	fuzzy_list		= get_defuzzification_list(params, vds)
 	for i in range(0,width):
